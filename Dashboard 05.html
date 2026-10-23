@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard PBL S5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eceee9;--panel:#fbfbf8;--ink:#1b2428;--mute:#5d6a70;--line:#d3d8d2;--ok:#1f8a4c;--warn:#b87503;--bad:#c62828;--info:#2b5f8a;--r:8px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,"Segoe UI",Arial,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--ink);color:#fff}
+h1{font-size:18px;font-weight:600;margin:0}
+h2{font-size:15px;font-weight:600;margin:0 0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:99px;background:#2c373c;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:#8a979c}
+.ok .dot{background:#3ddc84}.bad .dot{background:#ff6b6b}.wait .dot{background:#ffc247}
+button{font:inherit;cursor:pointer;border-radius:var(--r);border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px}
+button.primary{background:var(--info);border-color:var(--info);color:#fff;font-weight:500}
+header button{background:transparent;color:#fff;border-color:#55646a;padding:4px 11px;font-size:13px}
+:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+main{max-width:980px;margin:0 auto;padding:20px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.wide{grid-column:1/-1}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input[type=text],input[type=password]{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);font:inherit;background:#fff}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin:10px 0 0}
+#login{max-width:420px;margin:0 auto;grid-column:1/-1;width:100%}
+#state{font-size:56px;font-weight:600;line-height:1;margin:4px 0 4px;color:var(--mute)}
+#state.ON{color:var(--ok)}#state.FAULT{color:var(--bad)}
+.sub{color:var(--mute);font-size:14px}
+.track{display:flex;margin:18px 0 2px;padding:0;list-style:none}
+.track li{flex:1;text-align:center;font-size:12px;color:var(--mute);position:relative;padding-top:20px}
+.track li::before{content:"";position:absolute;top:4px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--line);z-index:1}
+.track li::after{content:"";position:absolute;top:9px;left:-50%;width:100%;height:2px;background:var(--line)}
+.track li:first-child::after{display:none}
+.track li.done::before,.track li.done::after{background:var(--ok)}
+.track li.now{color:var(--ink);font-weight:600}.track li.now::before{background:var(--ok);box-shadow:0 0 0 4px #1f8a4c33}
+.sw{display:flex;align-items:center;gap:14px}
+.switch{width:64px;height:34px;border-radius:99px;border:0;background:#aab3b7;position:relative;padding:0;flex:none}
+.switch::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-checked=true]{background:var(--ok)}.switch[aria-checked=true]::after{transform:translateX(30px)}
+.switch:disabled{opacity:.45;cursor:not-allowed}
+#banner{background:var(--bad);color:#fff;border-radius:var(--r);padding:14px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center;grid-column:1/-1}
+#banner button{background:#fff;color:var(--bad);border:0;font-weight:600}
+#banner[hidden],#login[hidden],header button[hidden]{display:none}
+ul.log{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+ul.log li{padding:9px 0;border-top:1px solid var(--line);display:flex;gap:12px}
+ul.log li:first-child{border-top:0}
+ul.log time{color:var(--mute);font-variant-numeric:tabular-nums;flex:none}
+.note{font-size:13px;color:var(--mute);margin:12px 0 0}
+.op{display:flex;gap:12px;align-items:center;padding:14px;border-radius:var(--r);border:1px solid var(--line);background:#fff}
+.opdot{width:16px;height:16px;border-radius:50%;background:#8a979c;flex:none}
+.op strong{font-size:17px}
+.op.yes{border-color:var(--ok);background:#e8f5ed}.op.yes .opdot{background:var(--ok)}
+.op.no{border-color:var(--bad);background:#fdeceb}.op.no .opdot{background:var(--bad)}
+.op.wait .opdot{background:var(--warn)}
+#vidWrap video{width:100%;max-height:220px;object-fit:cover;border-radius:var(--r);transform:scaleX(-1);background:#000;margin-top:12px}
+#camBtn{margin-top:12px}
+@media(prefers-reduced-motion:reduce){.switch::after{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Dashboard PBL S5</h1>
+  <div class="chips">
+    <span class="chip" id="cBroker"><span class="dot"></span><span>Broker: belum terhubung</span></span>
+    <span class="chip" id="cEsp"><span class="dot"></span><span>ESP32: belum diketahui</span></span>
+    <button id="btnOut" hidden>Putuskan</button>
+  </div>
+</header>
+<main>
+  <section class="card" id="login">
+    <h2>Masuk ke broker</h2>
+    <label for="user">Username</label>
+    <input type="text" id="user" autocomplete="username" value="web_dashboard">
+    <label for="pass">Password</label>
+    <input type="password" id="pass" autocomplete="current-password">
+    <p class="err" id="err" role="alert"></p>
+    <button class="primary" id="btnIn">Hubungkan</button>
+  </section>
+
+  <div id="banner" role="alert" hidden><strong id="bannerTxt"></strong><button id="bannerX">Tutup</button></div>
+
+  <section class="card">
+    <h2>Status mesin</h2>
+    <div id="state">—</div>
+    <div class="sub" id="stateTxt">Menunggu data dari ESP32</div>
+    <ol class="track" id="track"></ol>
+  </section>
+
+  <section class="card">
+    <h2>Deteksi operator</h2>
+    <div class="op idle" id="op"><span class="opdot"></span><div><strong id="opTxt">Kamera belum aktif</strong><div class="sub" id="opSub">Tekan Mulai kamera di PC yang memiliki webcam</div></div></div>
+    <div id="vidWrap" hidden><video id="vid" playsinline muted></video></div>
+    <button id="camBtn">Mulai kamera</button>
+    <p class="note">Mesin hanya bekerja bila operator terdeteksi. Biarkan tab ini terlihat di PC. Bila deteksi berhenti, ESP32 menurunkan sinyal operator.</p>
+  </section>
+
+  <section class="card">
+    <h2>Aktifkan mesin</h2>
+    <div class="sw">
+      <button class="switch" id="sw" role="switch" aria-checked="false" aria-label="Izin jalan" disabled></button>
+      <div><strong id="swTxt">OFF</strong><div class="sub" id="hbTxt">Mesin tidak boleh jalan</div></div>
+    </div>
+    <p class="note">Tombol START di mesin hanya bekerja saat izin ini ON. Selama ON, dashboard mengirim heartbeat tiap 1 detik. Bila koneksi putus atau heartbeat berhenti, izin otomatis turun. Biarkan tab ini tetap terlihat. E-stop tetap pengaman utama.</p>
+    <p class="note" id="req"></p>
+  </section>
+
+  <section class="card wide">
+    <h2>Log kejadian</h2>
+    <label style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><input type="checkbox" id="snd" autocomplete="off"> Bunyikan peringatan saat alarm masuk</label>
+    <ul class="log" id="log"><li class="sub">Belum ada kejadian.</li></ul>
+  </section>
+  <p class="note wide" id="last">Pesan terakhir: belum ada pesan masuk.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+const HOST='a96602c2.ala.asia-southeast1.emqxsl.com';
+const URL_WSS='wss://'+HOST+':8084/mqtt';
+const T={en:'pbl/cmd/remote_enable',hb:'pbl/cmd/heartbeat',machine:'pbl/status/machine',step:'pbl/status/step',online:'pbl/status/online',alarm:'pbl/alarm',op:'pbl/cmd/operator_present'};
+const STEPS=['Masuk','Mesin 1','Mesin 2','Mesin 3','Keluar'];
+const $=id=>document.getElementById(id);
+let c=null,hb=null,n=0,on=false,alarms=[],ctx=null,det=null,stream=null,loop=null,camOn=false,pos=0,lastSeen=0,present=null,remote={v:null,t:0},shown=null,opNow=null;
+
+function chip(el,cls,txt){el.className='chip '+cls;el.lastElementChild.textContent=txt}
+function showErr(m){$('err').textContent=m||''}
+
+function connect(){
+  const u=$('user').value.trim(),p=$('pass').value;
+  if(!u||!p){showErr('Isi username dan password.');return}
+  showErr('');chip($('cBroker'),'wait','Broker: menghubungkan');
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume()}catch(e){}
+  if(c)c.end(true);
+  c=mqtt.connect(URL_WSS,{username:u,password:p,clientId:'web_'+Math.random().toString(16).slice(2,8),
+    keepalive:20,connectTimeout:8000,reconnectPeriod:2000,
+    will:{topic:T.en,payload:'0',qos:1,retain:false}});
+  c.on('connect',()=>{
+    chip($('cBroker'),'ok','Broker: terhubung');
+    c.subscribe(['pbl/status/#',T.alarm,T.op],{qos:1});
+    $('login').hidden=true;$('btnOut').hidden=false;$('sw').disabled=false;
+  });
+  c.on('reconnect',()=>{chip($('cBroker'),'wait','Broker: menyambung ulang');forceOff()});
+  c.on('close',()=>{if(c&&!c.connected){chip($('cBroker'),'bad','Broker: terputus');forceOff()}});
+  c.on('error',e=>{
+    if(/auth|not authorized|bad user/i.test(e.message)){c.end(true);showErr('Username atau password salah.');
+      $('login').hidden=false;$('sw').disabled=true;chip($('cBroker'),'bad','Broker: ditolak')}
+    else showErr('Gagal terhubung: '+e.message);
+  });
+  c.on('message',(t,b)=>onMsg(t,b.toString().trim()));
+}
+
+function onMsg(t,s){
+  $('last').textContent='Pesan terakhir: '+t+' = '+s+' ('+new Date().toLocaleTimeString('id-ID')+')';
+  if(t===T.machine){
+    const v=s.toUpperCase(),el=$('state');
+    el.textContent=v;el.className=v;
+    $('stateTxt').textContent=v==='ON'?'Mesin berjalan':v==='OFF'?'Mesin berhenti':v==='FAULT'?'Mesin gangguan, cek log alarm':'Status tidak dikenal';
+  }else if(t===T.step){
+    const i=parseInt(s,10);
+    [...$('track').children].forEach((li,k)=>{li.className=k<i?'done':k===i?'now':''});
+  }else if(t===T.online){
+    s.toLowerCase()==='online'?chip($('cEsp'),'ok','ESP32: online'):chip($('cEsp'),'bad','ESP32: offline');
+  }else if(t===T.alarm){addAlarm(s)
+  }else if(t===T.op){remote={v:s==='1',t:Date.now()};showRemote()}
+}
+
+function logEvt(m,k){
+  alarms.unshift({t:new Date().toLocaleTimeString('id-ID'),m,k});alarms=alarms.slice(0,50);
+  $('log').innerHTML='';
+  alarms.forEach(a=>{const li=document.createElement('li'),tm=document.createElement('time'),sp=document.createElement('span');
+    tm.textContent=a.t;sp.textContent=(a.k==='alarm'?'ALARM · ':'')+a.m;li.append(tm,sp);$('log').append(li)});
+}
+function addAlarm(s){
+  let m=s;try{const o=JSON.parse(s);m=o.msg||o.message||s}catch(e){}
+  logEvt(m,'alarm');
+  $('bannerTxt').textContent='ALARM: '+m;$('banner').hidden=false;
+  if($('snd').checked)beep();
+}
+
+function beep(){
+  if(!ctx)return;ctx.resume();
+  for(let k=0;k<3;k++){const o=ctx.createOscillator(),g=ctx.createGain();
+    o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(ctx.destination);
+    o.start(ctx.currentTime+k*.35);o.stop(ctx.currentTime+k*.35+.2)}
+}
+
+function paint(){
+  $('sw').setAttribute('aria-checked',on);
+  $('swTxt').textContent=on?'ON':'OFF';
+  $('hbTxt').textContent=on?'Heartbeat dikirim tiap 1 detik':'Mesin tidak boleh jalan';
+  req();
+}
+function forceOff(){on=false;clearInterval(hb);hb=null;paint()}
+
+function setRemote(v){
+  if(!c||!c.connected){showErr('Belum terhubung ke broker.');return}
+  on=v;
+  c.publish(T.en,v?'1':'0',{qos:1});
+  clearInterval(hb);hb=null;
+  if(v){n=0;hb=setInterval(()=>{if(c&&c.connected)c.publish(T.hb,String(++n))},1000)}
+  paint();
+}
+
+
+/* ===== Deteksi operator (webcam + MediaPipe) ===== */
+const MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODEL='https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
+const IDLE=['idle','Kamera belum aktif','Tekan Mulai kamera di PC yang memiliki webcam'];
+function setOp(cls,t,sub){$('op').className='op '+cls;$('opTxt').textContent=t;$('opSub').textContent=sub;
+  opNow=cls==='yes'?true:cls==='no'?false:null;req()}
+function req(){$('req').textContent='Syarat jalan → Izin dashboard: '+(on?'ON ✓':'OFF ✗')+' · Operator: '+
+  (opNow===true?'terdeteksi ✓':opNow===false?'tidak terdeteksi ✗':'belum ada data ✗')+' · lalu tekan START di mesin.'}
+function pubOp(){if(camOn&&present!==null&&c&&c.connected)c.publish(T.op,present?'1':'0')}
+function setPresent(p){
+  present=p;
+  setOp(p?'yes':'no',p?'OPERATOR TERDETEKSI':'OPERATOR TIDAK TERDETEKSI',p?'Mesin boleh jalan bila izin ON dan START ditekan':'Mesin tidak akan bekerja');
+  logEvt(p?'Operator terdeteksi':'Operator tidak terdeteksi','op');pubOp();
+}
+function showRemote(){
+  if(camOn)return;
+  if(remote.t&&Date.now()-remote.t<3500){
+    setOp(remote.v?'yes':'no',remote.v?'OPERATOR TERDETEKSI':'OPERATOR TIDAK TERDETEKSI','Data dari kamera di PC');
+    if(remote.v!==shown){shown=remote.v;logEvt(remote.v?'Operator terdeteksi':'Operator tidak terdeteksi','op')}
+  }else{shown=null;setOp(...IDLE)}
+}
+function detect(){
+  const v=$('vid');if(!det||v.readyState<2)return;
+  let n=0;try{n=det.detectForVideo(v,performance.now()).detections.length}catch(e){return}
+  const now=Date.now();
+  if(n>0){lastSeen=now;pos++}else pos=0;
+  let p=present;
+  if(n>0&&pos>=3)p=true;else if(n===0&&now-lastSeen>1500)p=false;
+  if(p!==present)setPresent(p);
+}
+async function startCam(){
+  setOp('wait','Menyiapkan kamera…','Izinkan akses kamera di browser');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+    const v=$('vid');v.srcObject=stream;await v.play();$('vidWrap').hidden=false;
+    if(!det){
+      setOp('wait','Memuat model deteksi…','Pertama kali butuh beberapa detik');
+      const {ObjectDetector,FilesetResolver}=await import(MP+'/vision_bundle.mjs');
+      const fs=await FilesetResolver.forVisionTasks(MP+'/wasm');
+      const opt={scoreThreshold:0.5,runningMode:'VIDEO',categoryAllowlist:['person']};
+      try{det=await ObjectDetector.createFromOptions(fs,{...opt,baseOptions:{modelAssetPath:MODEL,delegate:'GPU'}})}
+      catch(e){det=await ObjectDetector.createFromOptions(fs,{...opt,baseOptions:{modelAssetPath:MODEL}})}
+    }
+    camOn=true;present=null;pos=0;lastSeen=0;$('camBtn').textContent='Hentikan kamera';
+    loop=setInterval(detect,200);
+  }catch(e){stopCam();setOp('no','Kamera gagal dimulai',String(e.message||e.name||e))}
+}
+function stopCam(){
+  clearInterval(loop);loop=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;
+  const was=camOn;camOn=false;present=null;$('vidWrap').hidden=true;$('camBtn').textContent='Mulai kamera';
+  if(was&&c&&c.connected)c.publish(T.op,'0');
+  remote={v:null,t:0};setOp(...IDLE);
+}
+$('camBtn').onclick=()=>camOn?stopCam():startCam();
+setInterval(pubOp,1000);setInterval(showRemote,1000);req();
+
+$('track').innerHTML=STEPS.map(s=>'<li>'+s+'</li>').join('');
+$('btnIn').onclick=connect;
+$('pass').addEventListener('keydown',e=>{if(e.key==='Enter')connect()});
+$('btnOut').onclick=()=>{if(c&&c.connected&&on)c.publish(T.en,'0',{qos:1});forceOff();if(c)c.end();
+  $('login').hidden=false;$('btnOut').hidden=true;$('sw').disabled=true;chip($('cBroker'),'','Broker: belum terhubung')};
+$('sw').onclick=()=>setRemote(!on);
+$('bannerX').onclick=()=>{$('banner').hidden=true};
+$('snd').onchange=e=>{if(e.target.checked){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();beep()}};
+document.addEventListener('visibilitychange',()=>{
+  if(on)$('hbTxt').textContent=document.hidden?'Tab tersembunyi: heartbeat bisa tertunda dan mesin bisa berhenti':'Heartbeat dikirim tiap 1 detik'});
+window.addEventListener('beforeunload',()=>{if(c&&c.connected){if(on)c.publish(T.en,'0');if(camOn)c.publish(T.op,'0')}});
+</script>
+</body>
+</html>
