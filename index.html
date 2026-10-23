@@ -60,6 +60,7 @@ ul.log time{color:var(--mute);font-variant-numeric:tabular-nums;flex:none}
 .op.wait .opdot{background:var(--warn)}
 #vidWrap video{width:100%;max-height:220px;object-fit:cover;border-radius:var(--r);transform:scaleX(-1);background:#000;margin-top:12px}
 #camBtn{margin-top:12px}
+details.opt{margin-top:12px;font-size:14px;color:var(--mute)}details.opt summary{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.switch::after{transition:none}}
 </style>
 </head>
@@ -94,10 +95,12 @@ ul.log time{color:var(--mute);font-variant-numeric:tabular-nums;flex:none}
 
   <section class="card">
     <h2>Deteksi operator</h2>
-    <div class="op idle" id="op"><span class="opdot"></span><div><strong id="opTxt">Kamera belum aktif</strong><div class="sub" id="opSub">Tekan Mulai kamera di PC yang memiliki webcam</div></div></div>
-    <div id="vidWrap" hidden><video id="vid" playsinline muted></video></div>
-    <button id="camBtn">Mulai kamera</button>
-    <p class="note">Mesin hanya bekerja bila operator terdeteksi. Biarkan tab ini terlihat di PC. Bila deteksi berhenti, ESP32 menurunkan sinyal operator.</p>
+    <div class="op idle" id="op"><span class="opdot"></span><div><strong id="opTxt">Menunggu data operator</strong><div class="sub" id="opSub">Belum ada sinyal operator dari sistem</div></div></div>
+    <p class="note">Hanya tampilan. Datanya dikirim oleh sistem deteksi operator lewat MQTT.</p>
+    <details class="opt"><summary>Opsional: pakai webcam laptop ini sebagai sumber deteksi</summary>
+      <div id="vidWrap" hidden><video id="vid" playsinline muted></video></div>
+      <button id="camBtn">Mulai kamera</button>
+    </details>
   </section>
 
   <section class="card">
@@ -106,7 +109,7 @@ ul.log time{color:var(--mute);font-variant-numeric:tabular-nums;flex:none}
       <button class="switch" id="sw" role="switch" aria-checked="false" aria-label="Izin jalan" disabled></button>
       <div><strong id="swTxt">OFF</strong><div class="sub" id="hbTxt">Mesin tidak boleh jalan</div></div>
     </div>
-    <p class="note">Tombol START di mesin hanya bekerja saat izin ini ON. Selama ON, dashboard mengirim heartbeat tiap 1 detik. Bila koneksi putus atau heartbeat berhenti, izin otomatis turun. Biarkan tab ini tetap terlihat. E-stop tetap pengaman utama.</p>
+    <p class="note">Tombol START di mesin hanya bekerja saat izin ini ON. Selama ON, dashboard mengirim heartbeat tiap 1 detik. Bila koneksi putus atau heartbeat berhenti, izin otomatis turun. Posisi tombol ini sama di semua perangkat yang terbuka. Biarkan tab ini tetap terlihat. E-stop tetap pengaman utama.</p>
     <p class="note" id="req"></p>
   </section>
 
@@ -125,7 +128,7 @@ const URL_WSS='wss://'+HOST+':8084/mqtt';
 const T={en:'pbl/cmd/remote_enable',hb:'pbl/cmd/heartbeat',machine:'pbl/status/machine',step:'pbl/status/step',online:'pbl/status/online',alarm:'pbl/alarm',op:'pbl/cmd/operator_present'};
 const STEPS=['Masuk','Mesin 1','Mesin 2','Mesin 3','Keluar'];
 const $=id=>document.getElementById(id);
-let c=null,hb=null,n=0,on=false,alarms=[],ctx=null,det=null,stream=null,loop=null,camOn=false,pos=0,lastSeen=0,present=null,remote={v:null,t:0},shown=null,opNow=null;
+let c=null,hb=null,n=0,on=false,own=false,lastEn=null,lastHb=0,alarms=[],ctx=null,det=null,stream=null,loop=null,camOn=false,pos=0,lastSeen=0,present=null,remote={v:null,t:0},shown=null,opNow=null;
 
 function chip(el,cls,txt){el.className='chip '+cls;el.lastElementChild.textContent=txt}
 function showErr(m){$('err').textContent=m||''}
@@ -137,11 +140,10 @@ function connect(){
   try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume()}catch(e){}
   if(c)c.end(true);
   c=mqtt.connect(URL_WSS,{username:u,password:p,clientId:'web_'+Math.random().toString(16).slice(2,8),
-    keepalive:20,connectTimeout:8000,reconnectPeriod:2000,
-    will:{topic:T.en,payload:'0',qos:1,retain:false}});
+    keepalive:20,connectTimeout:8000,reconnectPeriod:2000});
   c.on('connect',()=>{
     chip($('cBroker'),'ok','Broker: terhubung');
-    c.subscribe(['pbl/status/#',T.alarm,T.op],{qos:1});
+    c.subscribe(['pbl/status/#',T.alarm,T.op,T.en,T.hb],{qos:1});
     $('login').hidden=true;$('btnOut').hidden=false;$('sw').disabled=false;
   });
   c.on('reconnect',()=>{chip($('cBroker'),'wait','Broker: menyambung ulang');forceOff()});
@@ -155,7 +157,7 @@ function connect(){
 }
 
 function onMsg(t,s){
-  $('last').textContent='Pesan terakhir: '+t+' = '+s+' ('+new Date().toLocaleTimeString('id-ID')+')';
+  if(t!==T.hb)$('last').textContent='Pesan terakhir: '+t+' = '+s+' ('+new Date().toLocaleTimeString('id-ID')+')';
   if(t===T.machine){
     const v=s.toUpperCase(),el=$('state');
     el.textContent=v;el.className=v;
@@ -166,7 +168,9 @@ function onMsg(t,s){
   }else if(t===T.online){
     s.toLowerCase()==='online'?chip($('cEsp'),'ok','ESP32: online'):chip($('cEsp'),'bad','ESP32: offline');
   }else if(t===T.alarm){addAlarm(s)
-  }else if(t===T.op){remote={v:s==='1',t:Date.now()};showRemote()}
+  }else if(t===T.op||t==='pbl/status/operator'){remote={v:s==='1',t:Date.now()};showRemote()
+  }else if(t===T.en){lastEn=s;if(s==='0')stopHb();sync()
+  }else if(t===T.hb){lastHb=Date.now();sync()}
 }
 
 function logEvt(m,k){
@@ -192,25 +196,28 @@ function beep(){
 function paint(){
   $('sw').setAttribute('aria-checked',on);
   $('swTxt').textContent=on?'ON':'OFF';
-  $('hbTxt').textContent=on?'Heartbeat dikirim tiap 1 detik':'Mesin tidak boleh jalan';
+  $('hbTxt').textContent=on?(own?'Heartbeat dikirim tiap 1 detik dari perangkat ini':'Izin aktif, dikirim dari perangkat lain'):'Mesin tidak boleh jalan';
   req();
 }
-function forceOff(){on=false;clearInterval(hb);hb=null;paint()}
+function forceOff(){stopHb();lastHb=0;lastEn=null;on=false;paint()}
 
 function setRemote(v){
   if(!c||!c.connected){showErr('Belum terhubung ke broker.');return}
-  on=v;
-  c.publish(T.en,v?'1':'0',{qos:1});
-  clearInterval(hb);hb=null;
-  if(v){n=0;hb=setInterval(()=>{if(c&&c.connected)c.publish(T.hb,String(++n))},1000)}
-  paint();
+  stopHb();lastEn=v?'1':'0';
+  c.publish(T.en,lastEn,{qos:1});
+  if(v){own=true;n=0;lastHb=Date.now();c.publish(T.hb,String(++n));
+    hb=setInterval(()=>{if(c&&c.connected)c.publish(T.hb,String(++n))},1000)}
+  sync();
 }
+function stopHb(){clearInterval(hb);hb=null;own=false}
+function sync(){const live=own||(lastEn!=='0'&&Date.now()-lastHb<3500);if(live!==on){on=live;paint()}}
+setInterval(sync,1000);
 
 
 /* ===== Deteksi operator (webcam + MediaPipe) ===== */
 const MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL='https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite';
-const IDLE=['idle','Kamera belum aktif','Tekan Mulai kamera di PC yang memiliki webcam'];
+const IDLE=['idle','Menunggu data operator','Belum ada sinyal operator dari sistem'];
 function setOp(cls,t,sub){$('op').className='op '+cls;$('opTxt').textContent=t;$('opSub').textContent=sub;
   opNow=cls==='yes'?true:cls==='no'?false:null;req()}
 function req(){$('req').textContent='Syarat jalan → Izin dashboard: '+(on?'ON ✓':'OFF ✗')+' · Operator: '+
@@ -224,7 +231,7 @@ function setPresent(p){
 function showRemote(){
   if(camOn)return;
   if(remote.t&&Date.now()-remote.t<3500){
-    setOp(remote.v?'yes':'no',remote.v?'OPERATOR TERDETEKSI':'OPERATOR TIDAK TERDETEKSI','Data dari kamera di PC');
+    setOp(remote.v?'yes':'no',remote.v?'OPERATOR TERDETEKSI':'OPERATOR TIDAK TERDETEKSI','Data dari sistem deteksi operator');
     if(remote.v!==shown){shown=remote.v;logEvt(remote.v?'Operator terdeteksi':'Operator tidak terdeteksi','op')}
   }else{shown=null;setOp(...IDLE)}
 }
@@ -266,14 +273,14 @@ setInterval(pubOp,1000);setInterval(showRemote,1000);req();
 $('track').innerHTML=STEPS.map(s=>'<li>'+s+'</li>').join('');
 $('btnIn').onclick=connect;
 $('pass').addEventListener('keydown',e=>{if(e.key==='Enter')connect()});
-$('btnOut').onclick=()=>{if(c&&c.connected&&on)c.publish(T.en,'0',{qos:1});forceOff();if(c)c.end();
+$('btnOut').onclick=()=>{if(c&&c.connected&&own)c.publish(T.en,'0',{qos:1});forceOff();if(c)c.end();
   $('login').hidden=false;$('btnOut').hidden=true;$('sw').disabled=true;chip($('cBroker'),'','Broker: belum terhubung')};
 $('sw').onclick=()=>setRemote(!on);
 $('bannerX').onclick=()=>{$('banner').hidden=true};
 $('snd').onchange=e=>{if(e.target.checked){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();beep()}};
 document.addEventListener('visibilitychange',()=>{
-  if(on)$('hbTxt').textContent=document.hidden?'Tab tersembunyi: heartbeat bisa tertunda dan mesin bisa berhenti':'Heartbeat dikirim tiap 1 detik'});
-window.addEventListener('beforeunload',()=>{if(c&&c.connected){if(on)c.publish(T.en,'0');if(camOn)c.publish(T.op,'0')}});
+  if(own)$('hbTxt').textContent=document.hidden?'Tab tersembunyi: heartbeat bisa tertunda dan mesin bisa berhenti':'Heartbeat dikirim tiap 1 detik dari perangkat ini'});
+window.addEventListener('beforeunload',()=>{if(c&&c.connected){if(own)c.publish(T.en,'0');if(camOn)c.publish(T.op,'0')}});
 </script>
 </body>
 </html>
